@@ -130,6 +130,7 @@ export class MainLayoutComponent implements OnInit {
   private _navItems = signal<NavItem[]>([
     { label: '仪表盘', icon: 'pi-th-large', route: '/dashboard' },
     { label: '试验方案', icon: 'pi-file', route: '/protocols', roles: ['researcher', 'qa', 'admin'] },
+    { label: '取样日历', icon: 'pi-calendar', route: '/samples/calendar' },
     { label: '样品管理', icon: 'pi-box', route: '/samples' },
     { label: '环境监控', icon: 'pi-temperature-high', route: '/environment' },
     { label: '环境警报', icon: 'pi-exclamation-triangle', route: '/environment/alerts', roles: ['qa', 'warehouse', 'admin'] },
@@ -177,6 +178,7 @@ export class MainLayoutComponent implements OnInit {
     const map: Record<string, string> = {
       '/dashboard': '仪表盘',
       '/protocols': '试验方案管理',
+      '/samples/calendar': '取样日历',
       '/samples': '样品生命周期管理',
       '/environment': '温湿度监控',
       '/environment/alerts': '环境警报处理',

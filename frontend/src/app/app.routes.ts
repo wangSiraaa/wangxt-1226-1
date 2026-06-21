@@ -32,6 +32,7 @@ export const routes: Routes = [
         path: 'samples',
         children: [
           { path: '', loadComponent: () => import('./pages/sample/sample-list/sample-list.component').then(m => m.SampleListComponent) },
+          { path: 'calendar', loadComponent: () => import('./pages/sample/sampling-calendar/sampling-calendar.component').then(m => m.SamplingCalendarComponent) },
           { path: ':id', loadComponent: () => import('./pages/sample/sample-detail/sample-detail.component').then(m => m.SampleDetailComponent) },
           { path: ':id/sampling', loadComponent: () => import('./pages/sample/sampling/sampling.component').then(m => m.SamplingComponent) },
         ]

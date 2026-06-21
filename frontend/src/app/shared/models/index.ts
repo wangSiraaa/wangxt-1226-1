@@ -101,6 +101,69 @@ export interface SamplingWindowInfo {
   is_urgent: boolean;
 }
 
+export interface SamplingCalendarEvent {
+  id: string;
+  timepoint_id: number;
+  protocol_id: number;
+  protocol_code: string;
+  protocol_title: string;
+  timepoint_label: string;
+  planned_date: string;
+  window_start: string;
+  window_end: string;
+  status: 'upcoming' | 'in_window' | 'urgent' | 'completed';
+  is_within_window: boolean;
+  is_urgent: boolean;
+  can_sample_now: boolean;
+  sample_count_total: number;
+  sample_count_sampled: number;
+  storage_conditions: Array<{ id: number; code: string; name: string; location: string }>;
+}
+
+export interface UpcomingSampleItem {
+  sample_id: number;
+  sample_code: string;
+  protocol_id: number;
+  protocol_code: string;
+  timepoint_id: number;
+  timepoint_label: string;
+  planned_date: string;
+  window_start: string;
+  window_end: string;
+  storage_condition_id: number;
+  condition_code: string;
+  condition_name: string;
+  location: string;
+  chamber_position?: string;
+  is_within_window: boolean;
+  can_sample_now: boolean;
+  days_until_window_start: number;
+  is_urgent: boolean;
+  is_locked: boolean;
+}
+
+export interface AvailableSampleForTimepoint {
+  sample_id: number;
+  sample_code: string;
+  protocol_id: number;
+  protocol_code: string;
+  timepoint_id: number;
+  timepoint_label: string;
+  planned_date: string;
+  window_start: string;
+  window_end: string;
+  storage_condition_id: number;
+  condition_code: string;
+  condition_name: string;
+  location: string;
+  chamber_position?: string;
+  quantity: number;
+  is_within_window: boolean;
+  can_sample_now: boolean;
+  is_locked: boolean;
+  lock_reason?: string;
+}
+
 export type SampleStatus = 'pending' | 'in_storage' | 'in_sampling_window' | 'sampled' | 'testing' | 'tested' | 'locked' | 'discarded';
 export type MovementType = 'in_chamber' | 'out_chamber' | 'transfer' | 'sampling' | 'return';
 

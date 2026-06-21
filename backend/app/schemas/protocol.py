@@ -144,3 +144,44 @@ class SamplingWindowInfo(BaseModel):
     can_sample_now: bool
     days_until_window_start: int
     is_urgent: bool
+
+
+class SamplingCalendarEvent(BaseModel):
+    id: str
+    timepoint_id: int
+    protocol_id: int
+    protocol_code: str
+    protocol_title: str
+    timepoint_label: str
+    planned_date: date
+    window_start: date
+    window_end: date
+    status: str
+    is_within_window: bool
+    is_urgent: bool
+    can_sample_now: bool
+    sample_count_total: int
+    sample_count_sampled: int
+    storage_conditions: List[dict] = []
+
+
+class UpcomingSampleItem(BaseModel):
+    sample_id: int
+    sample_code: str
+    protocol_id: int
+    protocol_code: str
+    timepoint_id: int
+    timepoint_label: str
+    planned_date: date
+    window_start: date
+    window_end: date
+    storage_condition_id: int
+    condition_code: str
+    condition_name: str
+    location: str
+    chamber_position: Optional[str] = None
+    is_within_window: bool
+    can_sample_now: bool
+    days_until_window_start: int
+    is_urgent: bool
+    is_locked: bool

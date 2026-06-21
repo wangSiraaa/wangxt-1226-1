@@ -12,14 +12,15 @@ from app.crud.crud_protocol import (
     update_protocol, update_protocol_status, delete_protocol,
     list_timepoints_by_protocol, update_timepoint, get_timepoint,
     get_sampling_window_info, get_upcoming_sampling_windows,
-    list_storage_conditions_by_protocol,
+    list_storage_conditions_by_protocol, get_sampling_calendar,
+    get_upcoming_samples_by_protocol, get_available_samples_for_timepoint,
 )
 from app.crud.crud_notification import create_notifications
 from app.models.notification import NotificationType
 from app.schemas.protocol import (
     ProtocolCreate, ProtocolOut, ProtocolUpdate, ProtocolListOut,
     ProtocolStatusUpdate, SamplingTimepointUpdate, SamplingTimepointOut,
-    SamplingWindowInfo, StorageConditionOut
+    SamplingWindowInfo, StorageConditionOut, SamplingCalendarEvent, UpcomingSampleItem
 )
 
 router = APIRouter(prefix="/api/protocols", tags=["Stability Protocols"])
@@ -192,3 +193,41 @@ def get_protocol_storage_conditions(
         raise HTTPException(status_code=404, detail="Protocol not found")
     conds = list_storage_conditions_by_protocol(db, protocol_id)
     return [StorageConditionOut.model_validate(c) for c in conds]
+
+
+@router.get("/sampling/calendar", response_model=List[SamplingCalendarEvent])
+def get_sampling_calendar_events(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    protocol_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    events = get_sampling_calendar(db, start_date=start_date, end_date=end_date, protocol_id=protocol_id)
+    return [SamplingCalendarEvent(**e) for e in events]
+
+
+@router.get("/{protocol_id}/upcoming-samples", response_model=List[UpcomingSampleItem])
+def get_protocol_upcoming_samples(
+    protocol_id: int,
+    days_ahead: int = Query(7, ge=1, le=60),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    protocol = get_protocol(db, protocol_id)
+    if not protocol:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+    items = get_upcoming_samples_by_protocol(db, protocol_id, days_ahead=days_ahead)
+    return [UpcomingSampleItem(**i) for i in items]
+
+
+@router.get("/timepoints/{timepoint_id}/available-samples", response_model=List[dict])
+def get_timepoint_available_samples(
+    timepoint_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    tp = get_timepoint(db, timepoint_id)
+    if not tp:
+        raise HTTPException(status_code=404, detail="Timepoint not found")
+    return get_available_samples_for_timepoint(db, timepoint_id)

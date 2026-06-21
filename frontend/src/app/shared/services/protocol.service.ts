@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Protocol, ProtocolCreate, ProtocolUpdate, ProtocolStatus, SamplingWindowInfo, SamplingTimepointUpdate } from '../models';
+import { Protocol, ProtocolCreate, ProtocolUpdate, ProtocolStatus, SamplingWindowInfo, SamplingTimepointUpdate, SamplingCalendarEvent, UpcomingSampleItem } from '../models';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -58,6 +58,24 @@ export class ProtocolService {
 
   getStorageConditions(protocolId: number): Observable<any[]> {
     return this.http.get<any[]>(`${API_URL}/protocols/${protocolId}/storage-conditions`);
+  }
+
+  getSamplingCalendar(params?: { start_date?: string; end_date?: string; protocol_id?: number }): Observable<SamplingCalendarEvent[]> {
+    let p = new HttpParams();
+    if (params?.start_date) p = p.set('start_date', params.start_date);
+    if (params?.end_date) p = p.set('end_date', params.end_date);
+    if (params?.protocol_id) p = p.set('protocol_id', String(params.protocol_id));
+    return this.http.get<SamplingCalendarEvent[]>(`${API_URL}/protocols/sampling/calendar`, { params: p });
+  }
+
+  getUpcomingSamples(protocolId: number, daysAhead: number = 7): Observable<UpcomingSampleItem[]> {
+    return this.http.get<UpcomingSampleItem[]>(`${API_URL}/protocols/${protocolId}/upcoming-samples`, {
+      params: { days_ahead: String(daysAhead) }
+    });
+  }
+
+  getTimepointAvailableSamples(timepointId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${API_URL}/protocols/timepoints/${timepointId}/available-samples`);
   }
 }
 

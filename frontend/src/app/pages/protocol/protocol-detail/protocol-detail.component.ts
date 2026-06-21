@@ -17,7 +17,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ProtocolService } from '../../../shared/services/protocol.service';
 import { SampleService } from '../../../shared/services/sample.service';
 import { AuthService } from '../../../shared/services/auth.service';
-import { Protocol, ProtocolStatus } from '../../../shared/models';
+import { Protocol, ProtocolStatus, UpcomingSampleItem } from '../../../shared/models';
 
 @Component({
   selector: 'app-protocol-detail',
@@ -191,6 +191,74 @@ import { Protocol, ProtocolStatus } from '../../../shared/models';
             </div>
           </p-tabPanel>
 
+          <p-tabPanel [header]="'📅 未来7天到期 (' + upcomingSamples().length + ')'">
+            <div class="card">
+              <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                <div>
+                  窗口内：<b class="text-green-600">{{ upcomingStats.inWindow }}</b> ·
+                  紧急：<b class="text-orange-600">{{ upcomingStats.urgent }}</b> ·
+                  锁定：<b class="text-red-600">{{ upcomingStats.locked }}</b>
+                </div>
+                <a [routerLink]="['/samples/calendar']" [queryParams]="{ protocol: protocol()!.id }"
+                  pButton label="取样日历" icon="pi pi-calendar" class="p-button-sm p-button-outlined"></a>
+              </div>
+              @if (upcomingSamples().length === 0) {
+                <div class="text-center py-12 text-gray-400">
+                  <i class="pi pi-check-circle text-4xl"></i>
+                  <div class="mt-2">未来7天内无到期样品</div>
+                </div>
+              } @else {
+                <p-table [value]="upcomingSamples()" responsiveLayout="scroll" size="small">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>样品编号</th>
+                      <th>时间点</th>
+                      <th>计划日期</th>
+                      <th>取样窗口</th>
+                      <th>条件/位置</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-s>
+                    <tr>
+                      <td><a [routerLink]="['/samples', s.sample_id]"><b>{{ s.sample_code }}</b></a></td>
+                      <td>{{ s.timepoint_label }}</td>
+                      <td>
+                        {{ s.planned_date }}
+                        <span *ngIf="s.is_urgent" class="ml-1 text-xs text-orange-600 font-semibold">
+                          ({{ s.days_until_window_start <= 0 ? '今天' : s.days_until_window_start + '天后' }})
+                        </span>
+                      </td>
+                      <td class="text-xs">
+                        <span class="text-blue-600">{{ s.window_start }}</span>
+                        ~
+                        <span class="text-purple-600">{{ s.window_end }}</span>
+                      </td>
+                      <td>
+                        <p-tag [value]="s.condition_code" severity="info" class="mr-1"></p-tag>
+                        <span class="text-xs text-gray-500">{{ s.chamber_position || s.location }}</span>
+                      </td>
+                      <td>
+                        <span *ngIf="s.is_locked" class="badge badge-danger">🔒 锁定</span>
+                        <span *ngIf="!s.is_locked && s.is_within_window" class="badge badge-success">窗口内</span>
+                        <span *ngIf="!s.is_locked && !s.is_within_window && s.is_urgent" class="badge badge-warning">紧急</span>
+                        <span *ngIf="!s.is_locked && !s.is_within_window && !s.is_urgent" class="badge badge-info">待开放</span>
+                      </td>
+                      <td>
+                        <a *ngIf="s.can_sample_now"
+                          [routerLink]="['/samples', s.sample_id, 'sampling']"
+                          pButton label="取样" icon="pi pi-sign-out" class="p-button-sm p-button-success"></a>
+                        <span *ngIf="!s.can_sample_now && s.is_locked" class="text-xs text-gray-400">已锁定</span>
+                        <span *ngIf="!s.can_sample_now && !s.is_locked" class="text-xs text-gray-400">窗口未开放</span>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+              }
+            </div>
+          </p-tabPanel>
+
           <p-tabPanel [header]="'🧪 样品列表 (' + samples().length + ')'">
             <div class="card">
               <div class="flex justify-between items-center mb-4">
@@ -235,6 +303,7 @@ export class ProtocolDetailComponent implements OnInit {
   id = Number(this.route.snapshot.params['id']);
   protocol = signal<Protocol | null>(null);
   samples = signal<any[]>([]);
+  upcomingSamples = signal<UpcomingSampleItem[]>([]);
   loading = signal(true);
   showGenerateDlg = false;
   generatePerCondition = 2;
@@ -243,6 +312,7 @@ export class ProtocolDetailComponent implements OnInit {
   tabIdx = 0;
 
   sampleStats = { inStorage: 0, out: 0, locked: 0 };
+  upcomingStats = { inWindow: 0, urgent: 0, locked: 0 };
 
   constructor(
     public auth: AuthService,
@@ -265,6 +335,7 @@ export class ProtocolDetailComponent implements OnInit {
       next: async (p) => {
         this.protocol.set(p);
         this.loadSamples();
+        this.loadUpcomingSamples();
         for (const tp of (p.sampling_timepoints || [])) {
           this.protocolSvc.getTimepointWindow(p.id, tp.id).subscribe({
             next: (wi) => { tp.window_info = wi; this.protocol.set({ ...this.protocol()! }); },
@@ -274,6 +345,17 @@ export class ProtocolDetailComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
+    });
+  }
+
+  loadUpcomingSamples() {
+    this.protocolSvc.getUpcomingSamples(this.id, 7).subscribe({
+      next: (list) => {
+        this.upcomingSamples.set(list);
+        this.upcomingStats.inWindow = list.filter(s => s.is_within_window).length;
+        this.upcomingStats.urgent = list.filter(s => s.is_urgent).length;
+        this.upcomingStats.locked = list.filter(s => s.is_locked).length;
+      }
     });
   }
 
