@@ -34,22 +34,22 @@ import { AlertLevel } from '../../../shared/models';
 
     <p-dialog header="处理环境警报" [(visible)]="showDlg" [modal]="true" [style]="{ width: '540px' }">
       <div *ngIf="selectedAlert()" class="space-y-4">
-        <div class="p-4 rounded-lg" [ngClass]="selectedAlert()!.level === 'critical' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'">
+        <div class="p-4 rounded-lg" [ngClass]="selectedAlert()!.alert_level === 'critical' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'">
           <div class="flex items-center gap-3 mb-2">
-            <span class="text-3xl">{{ selectedAlert()!.level === 'critical' ? '🚨' : '⚠️' }}</span>
+            <span class="text-3xl">{{ selectedAlert()!.alert_level === 'critical' ? '🚨' : '⚠️' }}</span>
             <div>
-              <div class="font-bold" [ngClass]="selectedAlert()!.level === 'critical' ? 'text-red-700' : 'text-yellow-700'">
-                {{ selectedAlert()!.chamber_id }} · {{ selectedAlert()!.parameter_name }} {{ selectedAlert()!.parameter_name === 'temperature' ? '温度' : '湿度' }}异常
+              <div class="font-bold" [ngClass]="selectedAlert()!.alert_level === 'critical' ? 'text-red-700' : 'text-yellow-700'">
+                {{ selectedAlert()!.chamber_id }} {{ selectedAlert()!.parameter_name }} {{ selectedAlert()!.parameter_name === 'temperature' ? '温度' : '湿度' }}异常
               </div>
               <div class="text-xs mt-1 text-gray-600">
                 实际值 <b>{{ selectedAlert()!.actual_value }}</b>
-                · 超出限制 <b>{{ selectedAlert()!.deviation_value || '?' }}</b>
-                · 持续 <b>{{ selectedAlert()!.duration_minutes }}</b> 分钟
+                超出限制 <b>{{ selectedAlert()!.deviation_amount || '?' }}</b>
+                持续 <b>{{ selectedAlert()!.duration_minutes }}</b> 分钟
               </div>
             </div>
           </div>
           <div class="text-xs text-gray-500 bg-white/60 p-2 rounded">
-            起始时间：{{ selectedAlert()!.triggered_at?.slice(0,19).replace('T',' ') }} · 结束时间：{{ selectedAlert()!.resolved_at?.slice(0,19).replace('T',' ') || '持续中' }}
+            起始时间：{{ selectedAlert()!.start_time?.slice(0,19).replace('T',' ') }} 结束时间：{{ selectedAlert()!.end_time?.slice(0,19).replace('T',' ') || '持续中' }}
           </div>
         </div>
 
@@ -64,9 +64,9 @@ import { AlertLevel } from '../../../shared/models';
             <p-checkbox formControlName="create_deviation" [binary]="true" label="同步创建偏差调查报告（会自动锁定该温湿度箱下的样品）"
               class="block"></p-checkbox>
             <div *ngIf="ackForm.value.create_deviation" class="mt-3 p-3 bg-blue-50 rounded text-xs text-blue-700">
-              <div class="font-semibold mb-1">ℹ️ 创建偏差将自动：</div>
+              <div class="font-semibold mb-1">创建偏差将自动：</div>
               <ul class="list-disc list-inside space-y-0.5">
-                <li>生成偏差报告，类型：environment_temperature_humidity</li>
+                <li>生成偏差报告，类型：{{ selectedAlert()!.parameter_name === 'temperature' ? 'temperature' : 'humidity' }}</li>
                 <li>自动锁定该温湿度箱关联的样品（需 QA 手工解锁）</li>
                 <li>通知 QA 团队进行进一步调查处理</li>
               </ul>
@@ -84,7 +84,7 @@ import { AlertLevel } from '../../../shared/models';
       <div class="card">
         <div class="page-header flex-wrap">
           <div>
-            <h2 class="page-title">🚨 环境警报处理中心</h2>
+            <h2 class="page-title">环境警报处理中心</h2>
             <p class="page-subtitle">温湿度超限警报确认、升级偏差调查、CAPA追踪</p>
           </div>
           <div class="flex gap-2">
@@ -96,8 +96,8 @@ import { AlertLevel } from '../../../shared/models';
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
           <div class="stat-mini"><div class="text-xs text-gray-500">警报总数</div><div class="text-2xl font-bold">{{ total() }}</div></div>
           <div class="stat-mini"><div class="text-xs text-gray-500">未确认</div><div class="text-2xl font-bold text-red-600">{{ unack() }}</div></div>
-          <div class="stat-mini"><div class="text-xs text-gray-500">🔴 严重</div><div class="text-2xl font-bold text-red-600">{{ critical() }}</div></div>
-          <div class="stat-mini"><div class="text-xs text-gray-500">🟡 警告</div><div class="text-2xl font-bold text-yellow-600">{{ warning() }}</div></div>
+          <div class="stat-mini"><div class="text-xs text-gray-500">严重</div><div class="text-2xl font-bold text-red-600">{{ critical() }}</div></div>
+          <div class="stat-mini"><div class="text-xs text-gray-500">警告</div><div class="text-2xl font-bold text-yellow-600">{{ warning() }}</div></div>
           <div class="stat-mini"><div class="text-xs text-gray-500">已转偏差</div><div class="text-2xl font-bold text-purple-600">{{ deviated() }}</div></div>
         </div>
       </div>
@@ -110,9 +110,9 @@ import { AlertLevel } from '../../../shared/models';
           </div>
           <div>
             <label class="field-label">级别</label>
-            <p-dropdown formControlName="level" [options]="[
+            <p-dropdown formControlName="alert_level" [options]="[
               {label:'全部', value: ''},
-              {label:'信息', value: 'info'},
+              {label:'信息', value: 'normal'},
               {label:'警告', value: 'warning'},
               {label:'严重', value: 'critical'},
             ]" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
@@ -136,11 +136,11 @@ import { AlertLevel } from '../../../shared/models';
           <div class="text-center py-16"><i class="pi pi-spin pi-spinner text-3xl text-gray-400"></i></div>
         } @else {
           <p-table [value]="alerts()" [paginator]="true" [rows]="15" responsiveLayout="scroll" size="small"
-            [sortField]="'triggered_at'" [sortOrder]="-1" [tableStyle]="{ 'min-width': '90rem' }">
+            [sortField]="'start_time'" [sortOrder]="-1" [tableStyle]="{ 'min-width': '90rem' }">
             <ng-template pTemplate="header">
               <tr>
                 <th style="width:50px;">ID</th>
-                <th pSortableColumn="triggered_at">触发时间 <p-sortIcon field="triggered_at"></p-sortIcon></th>
+                <th pSortableColumn="start_time">触发时间 <p-sortIcon field="start_time"></p-sortIcon></th>
                 <th>温湿度箱</th>
                 <th>参数</th>
                 <th>实际值</th>
@@ -153,31 +153,31 @@ import { AlertLevel } from '../../../shared/models';
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-a>
-              <tr [style]="{ background: !a.acknowledged ? (a.level === 'critical' ? '#fef2f2' : '#fffbeb') : '' }">
+              <tr [style]="{ background: !a.is_acknowledged ? (a.alert_level === 'critical' ? '#fef2f2' : '#fffbeb') : '' }">
                 <td>#{{ a.id }}</td>
-                <td>{{ a.triggered_at?.slice(0,19).replace('T',' ') }}</td>
+                <td>{{ a.start_time?.slice(0,19).replace('T',' ') }}</td>
                 <td><b>{{ a.chamber_id }}</b></td>
-                <td>{{ a.parameter_name === 'temperature' ? '🌡️ 温度' : '💧 湿度' }}</td>
+                <td>{{ a.parameter_name === 'temperature' ? '温度' : '湿度' }}</td>
                 <td class="font-bold text-red-600">{{ a.actual_value }}</td>
-                <td>{{ a.deviation_value || '-' }}</td>
+                <td>{{ a.deviation_amount || '-' }}</td>
                 <td>{{ a.duration_minutes }} 分钟</td>
                 <td>
-                  <p-tag [severity]="a.level === 'critical' ? 'danger' : a.level === 'warning' ? 'warning' : 'info'"
-                    [value]="a.level === 'critical' ? '严重' : a.level === 'warning' ? '警告' : '信息'"></p-tag>
+                  <p-tag [severity]="a.alert_level === 'critical' ? 'danger' : a.alert_level === 'warning' ? 'warning' : 'info'"
+                    [value]="a.alert_level === 'critical' ? '严重' : a.alert_level === 'warning' ? '警告' : '信息'"></p-tag>
                 </td>
                 <td>
-                  <span *ngIf="a.acknowledged" class="badge badge-success">
-                    ✅ {{ a.acknowledged_by_name || '已确认' }}
+                  <span *ngIf="a.is_acknowledged" class="badge badge-success">
+                    {{ a.acknowledged_by_name || '已确认' }}
                   </span>
-                  <span *ngIf="!a.acknowledged" class="badge badge-danger">⏳ 待处理</span>
+                  <span *ngIf="!a.is_acknowledged" class="badge badge-danger">待处理</span>
                 </td>
                 <td>
-                  <a *ngIf="a.linked_deviation_id" [routerLink]="['/deviations', a.linked_deviation_id]">
-                    <span class="badge badge-secondary">偏差 #{{ a.linked_deviation_id }}</span>
+                  <a *ngIf="a.deviation_id" [routerLink]="['/deviations', a.deviation_id]">
+                    <span class="badge badge-secondary">偏差 #{{ a.deviation_id }}</span>
                   </a>
                 </td>
                 <td class="text-center">
-                  <button *ngIf="!a.acknowledged && auth.hasRole(['qa','warehouse','admin'])"
+                  <button *ngIf="!a.is_acknowledged && auth.hasRole(['qa','warehouse','admin'])"
                     pButton icon="pi pi-check" class="p-button-sm p-button-text p-button-success"
                     (click)="openAckDlg(a)" pTooltip="处理/确认" tooltipPosition="left"></button>
                 </td>
@@ -205,7 +205,7 @@ export class AlertsComponent implements OnInit {
 
   filterForm = new FormGroup({
     chamber_id: new FormControl(''),
-    level: new FormControl(''),
+    alert_level: new FormControl(''),
     acknowledged: new FormControl(''),
   });
 
@@ -234,18 +234,18 @@ export class AlertsComponent implements OnInit {
     this.loading.set(true);
     const f: any = { limit: 500 };
     if (this.filterForm.value.chamber_id) f.chamber_id = this.filterForm.value.chamber_id;
-    if (this.filterForm.value.level) f.level = this.filterForm.value.level as AlertLevel;
-    if (this.filterForm.value.acknowledged === 'true') f.acknowledged = true;
-    if (this.filterForm.value.acknowledged === 'false') f.acknowledged = false;
+    if (this.filterForm.value.alert_level) f.alert_level = this.filterForm.value.alert_level as AlertLevel;
+    if (this.filterForm.value.acknowledged === 'true') f.is_acknowledged = true;
+    if (this.filterForm.value.acknowledged === 'false') f.is_acknowledged = false;
 
     this.env.listAlerts(f).subscribe({
       next: (list) => {
         this.alerts.set(list);
         this.total.set(list.length);
-        this.unack.set(list.filter(a => !a.acknowledged).length);
-        this.critical.set(list.filter(a => a.level === 'critical').length);
-        this.warning.set(list.filter(a => a.level === 'warning').length);
-        this.deviated.set(list.filter(a => a.linked_deviation_id).length);
+        this.unack.set(list.filter(a => !a.is_acknowledged).length);
+        this.critical.set(list.filter(a => a.alert_level === 'critical').length);
+        this.warning.set(list.filter(a => a.alert_level === 'warning').length);
+        this.deviated.set(list.filter(a => a.has_deviation_report || a.deviation_id).length);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -254,7 +254,7 @@ export class AlertsComponent implements OnInit {
 
   openAckDlg(a: any) {
     this.selectedAlert.set(a);
-    this.ackForm.reset({ acknowledge_remark: '', create_deviation: a.level === 'critical' });
+    this.ackForm.reset({ acknowledge_remark: '', create_deviation: a.alert_level === 'critical' });
     this.showDlg = true;
   }
 

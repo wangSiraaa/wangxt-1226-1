@@ -18,6 +18,7 @@ import { TestResultService } from '../../../shared/services/test-result.service'
 import { SampleService } from '../../../shared/services/sample.service';
 import { ProtocolService } from '../../../shared/services/protocol.service';
 import { AuthService } from '../../../shared/services/auth.service';
+import { TestItem } from '../../../shared/models';
 
 @Component({
   selector: 'app-test-result-edit',
@@ -33,7 +34,7 @@ import { AuthService } from '../../../shared/services/auth.service';
           <div class="flex items-center gap-3">
             <a routerLink="/test-results" pButton icon="pi pi-arrow-left" class="p-button-text p-button-plain"></a>
             <div>
-              <h2 class="page-title m-0">{{ isEdit ? '📝 编辑检测结果' : '➕ 录入检测结果' }}</h2>
+              <h2 class="page-title m-0">{{ isEdit ? '编辑检测结果' : '录入检测结果' }}</h2>
               <p class="page-subtitle m-0">填写各项检测数据，系统自动判定 OOS/OOT 质量判定</p>
             </div>
           </div>
@@ -55,7 +56,7 @@ import { AuthService } from '../../../shared/services/auth.service';
                 <ng-template let-item pTemplate="item">
                   <div>
                     <div><b>{{ item.sample_code || item.label }}</b></div>
-                    <div class="text-xs text-gray-500">{{ item.protocol_code || '' }} · {{ item.condition_code || '' }}</div>
+                    <div class="text-xs text-gray-500">{{ item.protocol_code || '' }} {{ item.condition_code || '' }}</div>
                   </div>
                 </ng-template>
               </p-dropdown>
@@ -70,11 +71,11 @@ import { AuthService } from '../../../shared/services/auth.service';
             </div>
             <div>
               <label class="field-label">检测方法</label>
-              <input type="text" pInputText formControlName="method_name" placeholder="如：HPLC-UV法" class="w-full">
+              <input type="text" pInputText formControlName="testing_method" placeholder="如：HPLC-UV法" class="w-full">
             </div>
             <div>
               <label class="field-label">检测仪器</label>
-              <input type="text" pInputText formControlName="instrument" placeholder="如：Agilent 1260" class="w-full">
+              <input type="text" pInputText formControlName="instrument_no" placeholder="如：Agilent 1260" class="w-full">
             </div>
             <div>
               <label class="field-label">关联取样记录ID</label>
@@ -82,14 +83,14 @@ import { AuthService } from '../../../shared/services/auth.service';
             </div>
             <div class="md:col-span-2">
               <label class="field-label">总体结论 / 摘要</label>
-              <textarea pInputTextarea formControlName="summary" [rows]="2" class="w-full" placeholder="总结本次检测的总体情况"></textarea>
+              <textarea pInputTextarea formControlName="overall_conclusion" [rows]="2" class="w-full" placeholder="总结本次检测的总体情况"></textarea>
             </div>
           </div>
         </div>
 
         <div class="p-4 mt-5">
           <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-            <h3 class="section-title border-none">📋 检测项目明细</h3>
+            <h3 class="section-title border-none">检测项目明细</h3>
             <button type="button" pButton label="添加项目" icon="pi pi-plus" class="p-button-sm" (click)="addItem()"></button>
             <div class="flex gap-2 flex-wrap">
               <button type="button" pButton label="含量" icon="pi pi-magic" class="p-button-sm p-button-outlined" (click)="addPreset('assay')"></button>
@@ -106,11 +107,11 @@ import { AuthService } from '../../../shared/services/auth.service';
                 <div [formGroupName]="i" class="grid grid-cols-1 md:grid-cols-6 gap-3">
                   <div class="md:col-span-1">
                     <label class="field-label">检测项目</label>
-                    <input type="text" pInputText formControlName="test_name" class="w-full" placeholder="如：含量">
+                    <input type="text" pInputText formControlName="test_item_name" class="w-full" placeholder="如：含量">
                   </div>
                   <div class="md:col-span-2">
                     <label class="field-label">质量标准/规格限度</label>
-                    <input type="text" pInputText formControlName="specification" class="w-full" placeholder="如：95.0%~105.0%">
+                    <input type="text" pInputText formControlName="specification_limit" class="w-full" placeholder="如：95.0%~105.0%">
                   </div>
                   <div>
                     <label class="field-label">结果值</label>
@@ -118,12 +119,12 @@ import { AuthService } from '../../../shared/services/auth.service';
                   </div>
                   <div>
                     <label class="field-label">单位</label>
-                    <input type="text" pInputText formControlName="unit" class="w-full" placeholder="%/mg/℃">
+                    <input type="text" pInputText formControlName="unit" class="w-full" placeholder="%/mg/">
                   </div>
                   <div class="flex items-end gap-1">
                     <button type="button" pButton icon="pi pi-trash" class="p-button-text p-button-sm p-button-danger" (click)="removeItem(i)" *ngIf="items.length > 1"></button>
-                    <span class="badge text-sm" *ngIf="getItemOos(i)" [ngClass]="item?.is_oos?'badge-danger':'item?.is_oot?'badge-warning':'badge-success'">
-                      {{item?.is_oos?'OOS':item?.is_oot?'OOT':'合格'}}
+                    <span class="badge text-sm" *ngIf="getItemOos(i)" [ngClass]="item.get('is_oos')?.value ? 'badge-danger' : item.get('is_oot')?.value ? 'badge-warning' : 'badge-success'">
+                      {{ item.get('is_oos')?.value ? 'OOS' : item.get('is_oot')?.value ? 'OOT' : '合格' }}
                     </span>
                   </div>
                   <div class="md:col-span-3">
@@ -132,7 +133,7 @@ import { AuthService } from '../../../shared/services/auth.service';
                   </div>
                   <div class="md:col-span-2">
                     <label class="field-label">趋势对比（可选）</label>
-                    <p-dropdown formControlName="is_oot_manual" [options]="[{label:'否',value:false},{label:'是',value:true}]" optionLabel="label" optionLabel="value" styleClass="w-full" [showClear]="true" placeholder="自动判定"></p-dropdown>
+                    <p-dropdown formControlName="is_oot_manual" [options]="[{label:'否',value:false},{label:'是',value:true}]" optionLabel="label" optionValue="value" styleClass="w-full" [showClear]="true" placeholder="自动判定"></p-dropdown>
                   </div>
                 </div>
               </div>
@@ -144,16 +145,17 @@ import { AuthService } from '../../../shared/services/auth.service';
             </div>
           }
           <div class="mt-4 p-3 rounded-lg text-xs" [ngClass]="formHasOos ? 'bg-red-50' : formHasOot ? 'bg-yellow-50' : 'bg-green-50'">
-              <div class="font-semibold mb-1" [ngClass]="formHasOos ? 'text-red-700' : formHasOot ? 'text-yellow-700' : 'text-green-700'">
-                📊 系统自动质量判定：
-                <span *ngIf="formHasOos" class="ml-2">存在 <b class="text-red-700">❌ 检测结果为 OOS（超出质量标准）</b></span>
-                <span *ngIf="!formHasOos && formHasOot" class="ml-2"><b class="text-yellow-700">⚠️ 存在 OOT（超出趋势）</span>
-                <span *ngIf="!formHasOos && !formHasOot" class="ml-2"><b class="text-green-700">✅ 所有项目符合规定</b></span>
-              </div>
-              <div class="text-gray-600">判定依据：各结果值与规格限度对比；规格支持区间写法：95.0~105.0 / ≥98.0 / ≤0.5 / 符合规定 等</div>
+            <div class="font-semibold mb-1" [ngClass]="formHasOos ? 'text-red-700' : formHasOot ? 'text-yellow-700' : 'text-green-700'">
+              系统自动质量判定：
+              <span *ngIf="formHasOos" class="ml-2">存在 <b class="text-red-700">检测结果为 OOS（超出质量标准）</b></span>
+              <span *ngIf="!formHasOos && formHasOot" class="ml-2"><b class="text-yellow-700">存在 OOT（超出趋势）</b></span>
+              <span *ngIf="!formHasOos && !formHasOot" class="ml-2"><b class="text-green-700">所有项目符合规定</b></span>
             </div>
-        </form>
-      </div>
+            <div class="text-gray-600">判定依据：各结果值与规格限度对比；规格支持区间写法：95.0~105.0 / 98.0 / 0.5 / 符合规定 等</div>
+          </div>
+        </div>
+      </form>
+    </div>
   `
 })
 export class TestResultEditComponent implements OnInit {
@@ -166,11 +168,11 @@ export class TestResultEditComponent implements OnInit {
 
   form: FormGroup;
   presets: Record<string, any> = {
-    content: { test_name: '含量', specification: '95.0%~105.0%', unit: '%' },
-    related: { test_name: '有关物质', specification: '≤0.5%', unit: '%' },
-    dissolution: { test_name: '溶出度', specification: '≥85%', unit: '%' },
-    water: { test_name: '水分', specification: '≤3.0%', unit: '%' },
-    appearance: { test_name: '外观性状', specification: '符合规定', result_value: '符合规定', unit: '' },
+    assay: { test_item_name: '含量', specification_limit: '95.0%~105.0%', unit: '%' },
+    related: { test_item_name: '有关物质', specification_limit: '0.5%', unit: '%' },
+    dissolution: { test_item_name: '溶出度', specification_limit: '85%', unit: '%' },
+    water: { test_item_name: '水分', specification_limit: '3.0%', unit: '%' },
+    appearance: { test_item_name: '外观性状', specification_limit: '符合规定', result_value: '符合规定', unit: '' },
   };
 
   constructor(
@@ -185,12 +187,12 @@ export class TestResultEditComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       sample_id: [null, Validators.required],
-      testing_date: [new Date(),
+      testing_date: [new Date()],
       analyst: ['', Validators.required],
-      method_name: [''],
-      instrument: [''],
+      testing_method: [''],
+      instrument_no: [''],
       sampling_record_id: [null],
-      summary: [''],
+      overall_conclusion: [''],
       items: this.fb.array([]),
     });
   }
@@ -200,9 +202,11 @@ export class TestResultEditComponent implements OnInit {
   getItem(i: number): any { return this.items.at(i).value; }
 
   get formHasOos(): boolean {
-    return this.items.controls.some(c => c.value?.is_oos; }
+    return this.items.controls.some(c => c.value?.is_oos);
+  }
   get formHasOot(): boolean {
-    return this.items.controls.some(c => c.value?.is_oot); }
+    return this.items.controls.some(c => c.value?.is_oot);
+  }
 
   getItemOos(i: number): any { return this.getItem(i); }
   getItemOot(i: number): any { return this.getItem(i); }
@@ -210,9 +214,9 @@ export class TestResultEditComponent implements OnInit {
   ngOnInit(): void {
     this.sampleSvc.list({ limit: 500 }).subscribe(list => {
       this.samples.set(list);
-      this.sampleOpts = list.filter(s => s.status !== 'destroyed').map(s => ({
+      this.sampleOpts = list.filter(s => s.status !== 'discarded').map(s => ({
         ...s,
-        label: `${s.sample_code} · ${s.protocol_code || ''} - ${s.condition_code || ''}
+        label: `${s.sample_code}  ${s.protocol_code || ''} - ${s.condition_code || ''}`
       }));
     });
     const editId = this.route.snapshot.queryParams['edit'];
@@ -222,17 +226,19 @@ export class TestResultEditComponent implements OnInit {
 
     if (sampleId) {
       this.initialSample = Number(sampleId);
-      this.form.patchValue({ sample_id: Number(sampleId);
+      this.form.patchValue({ sample_id: Number(sampleId) });
     }
-    if (srId) this.form.patchValue({ sampling_record_id: Number(srId);
-    if (editId) { this.isEdit = true; this.editingId = Number(editId);
+    if (srId) this.form.patchValue({ sampling_record_id: Number(srId) });
+    if (editId) {
+      this.isEdit = true;
+      this.editingId = Number(editId);
       this.svc.get(this.editingId).subscribe(r => {
         this.form.patchValue({ ...r, testing_date: new Date(r.testing_date) });
         this.items.clear();
-        (r.items || []).forEach(item => this.addItem(item);
+        (r.items || []).forEach(item => this.addItem(item));
       });
     } else {
-      this.addPreset('content');
+      this.addPreset('assay');
       this.addPreset('related');
       this.addPreset('related');
     }
@@ -241,11 +247,14 @@ export class TestResultEditComponent implements OnInit {
   addItem(data?: any) {
     this.items.push(this.fb.group({
       id: [data?.id || null],
-      test_name: [data?.test_name || ''],
-      specification: [data?.specification || ''],
+      test_item_code: [data?.test_item_code || ''],
+      test_item_name: [data?.test_item_name || ''],
+      specification_limit: [data?.specification_limit || ''],
       result_value: [data?.result_value || ''],
+      result_numeric: [data?.result_numeric || null],
       result_text: [data?.result_text || ''],
       unit: [data?.unit || ''],
+      is_conforming: [data?.is_conforming ?? true],
       is_oos: [data?.is_oos || false],
       is_oot: [data?.is_oot || false],
       remarks: [''],
@@ -280,8 +289,10 @@ export class TestResultEditComponent implements OnInit {
         this.message.add({ severity: 'success', summary: mode === 'draft' ? '已保存草稿' : '已提交审批', detail: r.result_code || '#' + r.id });
         setTimeout(() => this.router.navigate(['/test-results', r.id]), 600);
       },
-      error: e => { this.saving.set(false);
-        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail }) }
+      error: e => {
+        this.saving.set(false);
+        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail });
+      }
     });
   }
 }

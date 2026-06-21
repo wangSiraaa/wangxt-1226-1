@@ -30,10 +30,10 @@ import { ResultStatus } from '../../../shared/models';
       <div class="space-y-4">
         <div class="p-3 rounded-lg" [ngClass]="reviewType === 'approve' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
           <div class="font-semibold" [ngClass]="reviewType === 'approve' ? 'text-green-700' : 'text-red-700'">
-            {{ reviewType === 'approve' ? '✅ 批准该检测结果（电子签名）' : '❌ 驳回该检测结果' }}
+            {{ reviewType === 'approve' ? '批准该检测结果（电子签名）' : '驳回该检测结果' }}
           </div>
           <div class="text-xs mt-1" [ngClass]="reviewType === 'approve' ? 'text-green-600' : 'text-red-600'">
-            操作人：{{ auth.currentUser?.full_name }} · {{ auth.currentUser?.username }}<br>
+            操作人：{{ auth.currentUser?.full_name }} {{ auth.currentUser?.username }}<br>
             批准后结果状态变为【已批准】，任何角色都无法再修改
           </div>
         </div>
@@ -75,17 +75,18 @@ import { ResultStatus } from '../../../shared/models';
                   <span class="badge text-base px-3 py-1" [ngClass]="statusClass(result()!.status)">
                     {{ statusLabel(result()!.status) }}
                   </span>
-                  <span *ngIf="result()!.is_oos" class="badge badge-danger px-3 py-1 text-base">❌ OOS</span>
-                  <span *ngIf="!result()!.is_oos && result()!.is_oot" class="badge badge-warning px-3 py-1 text-base">⚠️ OOT</span>
+                  <span *ngIf="result()!.is_oos" class="badge badge-danger px-3 py-1 text-base">OOS</span>
+                  <span *ngIf="!result()!.is_oos && result()!.is_oot" class="badge badge-warning px-3 py-1 text-base">OOT</span>
                   <span *ngIf="result()!.status === 'approved'" class="badge badge-success px-3 py-1 text-base">
-                    🔒 已锁定（审批后不可修改）
+                    已锁定（审批后不可修改）
                   </span>
                 </div>
                 <div class="text-sm text-gray-600">
                   样品：<a class="text-blue-600 hover:underline" [routerLink]="['/samples', result()!.sample_id]">
                     {{ result()!.sample_code || '#' + result()!.sample_id }}
                   </a>
-                  · 方案：<a class="text-blue-600 hover:underline" [routerLink]="['/protocols', result()!.protocol_id || 0]" *ngIf="result()!.protocol_id">
+                  {{ result()!.protocol_id ? '方案：' : '' }}
+                  <a *ngIf="result()!.protocol_id" class="text-blue-600 hover:underline" [routerLink]="['/protocols', result()!.protocol_id]">
                     {{ result()!.protocol_code || '#' + result()!.protocol_id }}
                   </a>
                 </div>
@@ -119,7 +120,7 @@ import { ResultStatus } from '../../../shared/models';
                 <div class="flex-1">
                   <div class="font-semibold text-green-800">该检测结果已被 QA 批准（电子签名 + 状态锁定）</div>
                   <div class="text-sm text-green-700 mt-1">
-                    <b>批准人：</b>{{ result()!.approved_by_name || '用户#' + result()!.approved_by }} · 
+                    <b>批准人：</b>{{ result()!.approved_by_name || '用户#' + result()!.approved_by }}
                     <b>批准时间：</b>{{ result()!.approved_at?.slice(0,19).replace('T',' ') }}<br>
                     <b>评语：</b>{{ result()!.approved_comments || '无' }}
                   </div>
@@ -132,10 +133,10 @@ import { ResultStatus } from '../../../shared/models';
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
             <div class="info-item"><div class="info-label">检测日期</div><div class="info-value">{{ result()!.testing_date }}</div></div>
             <div class="info-item"><div class="info-label">分析员</div><div class="info-value">{{ result()!.analyst || '-' }}</div></div>
-            <div class="info-item"><div class="info-label">检测方法</div><div class="info-value">{{ result()!.method_name || '-' }}</div></div>
-            <div class="info-item"><div class="info-label">仪器</div><div class="info-value">{{ result()!.instrument || '-' }}</div></div>
+            <div class="info-item"><div class="info-label">检测方法</div><div class="info-value">{{ result()!.testing_method || '-' }}</div></div>
+            <div class="info-item"><div class="info-label">仪器</div><div class="info-value">{{ result()!.instrument_no || '-' }}</div></div>
             <div class="info-item md:col-span-2"><div class="info-label">总体结论</div>
-              <div class="info-value text-left">{{ result()!.summary || '（无）' }}</div>
+              <div class="info-value text-left">{{ result()!.overall_conclusion || '（无）' }}</div>
             </div>
             <div class="info-item"><div class="info-label">创建人</div>
               <div class="info-value">{{ result()!.created_by_name || '#' + result()!.created_by }}</div>
@@ -147,7 +148,7 @@ import { ResultStatus } from '../../../shared/models';
         </div>
 
         <p-tabView>
-          <p-tabPanel [header]="'🧪 检测项目明细 (' + (result()!.items?.length || 0) + ')'">
+          <p-tabPanel [header]="'检测项目明细 (' + (result()!.items?.length || 0) + ')'">
             <div class="card">
               <p-table [value]="result()!.items || []" responsiveLayout="scroll" size="small">
                 <ng-template pTemplate="header">
@@ -164,8 +165,8 @@ import { ResultStatus } from '../../../shared/models';
                 <ng-template pTemplate="body" let-it let-ri="rowIndex">
                   <tr [style]="{ background: it.is_oos ? '#fef2f2' : it.is_oot ? '#fffbeb' : '' }">
                     <td>{{ ri + 1 }}</td>
-                    <td><b>{{ it.test_name }}</b></td>
-                    <td class="text-blue-700 font-medium">{{ it.specification }}</td>
+                    <td><b>{{ it.test_item_name }}</b></td>
+                    <td class="text-blue-700 font-medium">{{ it.specification_limit }}</td>
                     <td class="font-semibold" [style]="{ color: it.is_oos ? '#dc2626' : it.is_oot ? '#d97706' : '#16a34a' }">
                       {{ it.result_value }}
                     </td>
@@ -173,7 +174,7 @@ import { ResultStatus } from '../../../shared/models';
                     <td class="text-xs text-gray-600 max-w-xs">{{ it.result_text || '-' }}</td>
                     <td>
                       <span class="badge" [ngClass]="it.is_oos?'badge-danger':it.is_oot?'badge-warning':'badge-success'">
-                        {{ it.is_oos ? '❌ OOS' : it.is_oot ? '⚠️ OOT' : '✅ 合格' }}
+                        {{ it.is_oos ? 'OOS' : it.is_oot ? 'OOT' : '合格' }}
                       </span>
                     </td>
                   </tr>
@@ -185,7 +186,7 @@ import { ResultStatus } from '../../../shared/models';
             </div>
           </p-tabPanel>
 
-          <p-tabPanel header="📝 审批历史 / 电子签名">
+          <p-tabPanel header="审批历史 / 电子签名">
             <div class="card">
               @if ((result()!.approvals || []).length === 0) {
                 <div class="text-center py-8 text-gray-400">暂无审批记录</div>
@@ -200,7 +201,7 @@ import { ResultStatus } from '../../../shared/models';
                           <b class="text-gray-800">{{ ap.approved ? '批准' : '驳回' }}</b>
                           <span class="text-xs text-gray-500">
                             {{ ap.approved_by_name || '用户#' + ap.approved_by }}
-                            · {{ ap.approved_at?.slice(0,19).replace('T',' ') }}
+                            {{ ap.approved_at?.slice(0,19).replace('T',' ') }}
                           </span>
                         </div>
                         <span class="text-xs text-gray-400 font-mono">#{{ ap.id }}</span>
@@ -261,7 +262,7 @@ export class TestResultDetailComponent implements OnInit {
   canEdit(): boolean {
     const r = this.result();
     if (!r) return false;
-    if (r.status === 'approved') return false; // 批准后永远不可修改
+    if (r.status === 'approved') return false;
     if (r.status === 'draft') return r.created_by === this.auth.currentUser?.id || this.auth.hasRole(['qa','admin']);
     if (r.status === 'rejected') return r.created_by === this.auth.currentUser?.id || this.auth.hasRole(['qa','admin']);
     return this.auth.hasRole(['qa', 'admin']);
@@ -270,10 +271,15 @@ export class TestResultDetailComponent implements OnInit {
   doSubmit() {
     this.submitting.set(true);
     this.svc.submit(this.id, '提交审批').subscribe({
-      next: (r: any) => { this.result.set(r); this.submitting.set(false);
-        this.message.add({ severity: 'success', summary: '已提交审批' }); },
-      error: e => { this.submitting.set(false);
-        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail }); }
+      next: (r: any) => {
+        this.result.set(r);
+        this.submitting.set(false);
+        this.message.add({ severity: 'success', summary: '已提交审批' });
+      },
+      error: e => {
+        this.submitting.set(false);
+        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail });
+      }
     });
   }
 
@@ -291,15 +297,19 @@ export class TestResultDetailComponent implements OnInit {
       comments: this.reviewForm.value.comments || ''
     }).subscribe({
       next: (r: any) => {
-        this.result.set(r); this.showReviewDlg = false; this.submitting.set(false);
+        this.result.set(r);
+        this.showReviewDlg = false;
+        this.submitting.set(false);
         this.message.add({
           severity: 'success',
           summary: this.reviewType === 'approve' ? '已批准（结果已锁定）' : '已驳回'
         });
         this.load();
       },
-      error: e => { this.submitting.set(false);
-        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail }); }
+      error: e => {
+        this.submitting.set(false);
+        this.message.add({ severity: 'error', summary: '失败', detail: e.error?.detail });
+      }
     });
   }
 }
